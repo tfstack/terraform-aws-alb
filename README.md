@@ -51,7 +51,7 @@ No modules.
 | <a name="input_name"></a> [name](#input\_name) | Base name for the ALB and related resources | `string` | n/a | yes |
 | <a name="input_public_subnet_cidrs"></a> [public\_subnet\_cidrs](#input\_public\_subnet\_cidrs) | List of public subnet CIDRs to validate IP targets | `list(string)` | `[]` | no |
 | <a name="input_public_subnet_ids"></a> [public\_subnet\_ids](#input\_public\_subnet\_ids) | List of public subnet IDs where the ALB will be deployed | `list(string)` | n/a | yes |
-| <a name="input_region"></a> [region](#input\_region) | AWS region for the provider. Defaults to ap-southeast-2 if not specified. | `string` | `"ap-southeast-2"` | no |
+| <a name="input_region"></a> [region](#input\_region) | (Deprecated) AWS region for the provider. Defaults to ap-southeast-2 if not specified. | `string` | `"ap-southeast-2"` | no |
 | <a name="input_suffix"></a> [suffix](#input\_suffix) | Optional suffix to append to the resource name | `string` | `""` | no |
 | <a name="input_tags"></a> [tags](#input\_tags) | Tags to apply to resources | `map(string)` | `{}` | no |
 | <a name="input_target_http_port"></a> [target\_http\_port](#input\_target\_http\_port) | The port the ALB forwards HTTP traffic to (Target Group) | `number` | `80` | no |
