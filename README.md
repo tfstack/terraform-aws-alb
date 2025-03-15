@@ -41,6 +41,7 @@ No modules.
 | <a name="input_certificate_arn"></a> [certificate\_arn](#input\_certificate\_arn) | ARN of an existing SSL certificate for HTTPS | `string` | `""` | no |
 | <a name="input_enable_deletion_protection"></a> [enable\_deletion\_protection](#input\_enable\_deletion\_protection) | Enable or disable deletion protection for the ALB | `bool` | `false` | no |
 | <a name="input_enable_https"></a> [enable\_https](#input\_enable\_https) | Enable HTTPS listener (must provide a certificate ARN) | `bool` | `false` | no |
+| <a name="input_enable_availability_zone_all"></a> [enable\_availability\_zone\_all](#input\_enable_availability_zone_all) | Set availability_zone to 'all' for IP targets outside VPC | `bool` | `false` | no |
 | <a name="input_health_check_healthy_threshold"></a> [health\_check\_healthy\_threshold](#input\_health\_check\_healthy\_threshold) | Number of successful health checks before considering the target healthy | `number` | `3` | no |
 | <a name="input_health_check_interval"></a> [health\_check\_interval](#input\_health\_check\_interval) | Health check interval in seconds | `number` | `30` | no |
 | <a name="input_health_check_path"></a> [health\_check\_path](#input\_health\_check\_path) | The health check endpoint for ALB target group | `string` | `"/"` | no |

@@ -66,10 +66,11 @@ resource "aws_security_group" "this" {
 resource "aws_lb_target_group" "http" {
   count = var.enable_https ? 0 : 1
 
-  name     = "${local.base_name}-http"
-  port     = var.target_http_port
-  protocol = "HTTP" # var.target_protocol
-  vpc_id   = var.vpc_id
+  name        = "${local.base_name}-http"
+  port        = var.target_http_port
+  protocol    = "HTTP" # var.target_protocol
+  target_type = var.target_type
+  vpc_id      = var.vpc_id
 
   health_check {
     path                = var.health_check_path
@@ -84,11 +85,12 @@ resource "aws_lb_target_group" "http" {
 
 # HTTPS Target Group (Only created if HTTPS is enabled)
 resource "aws_lb_target_group" "https" {
-  count    = var.enable_https ? 1 : 0
-  name     = "${local.base_name}-https"
-  port     = var.target_https_port
-  protocol = "HTTPS" # var.target_protocol
-  vpc_id   = var.vpc_id
+  count       = var.enable_https ? 1 : 0
+  name        = "${local.base_name}-https"
+  port        = var.target_https_port
+  protocol    = "HTTPS" # var.target_protocol
+  target_type = var.target_type
+  vpc_id      = var.vpc_id
 
   health_check {
     path                = var.health_check_path
@@ -170,8 +172,8 @@ resource "aws_lb_target_group_attachment" "generic" {
   target_id        = each.value
 
   # Ensure port is only applied for instance and IP targets
-  port = var.target_type == "instance" || var.target_type == "ip" ? var.target_http_port : null
+  port = contains(["instance", "ip"], var.target_type) ? var.target_http_port : null
 
   # Ensure availability zone is applied only for IP targets outside VPC
-  availability_zone = var.target_type == "ip" && !contains(var.public_subnet_cidrs, each.value) ? "all" : null
+  availability_zone = var.enable_availability_zone_all ? "all" : null
 }
