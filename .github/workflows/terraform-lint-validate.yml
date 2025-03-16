@@ -8,4 +8,4 @@ permissions:
   pull-requests: read
 jobs:
   commitmsg-conform:
-    uses: tfstack/actions/.github/workflows/terraform-lint-validate@main
+    uses: tfstack/actions/.github/workflows/terraform-lint-validate.yml@main
