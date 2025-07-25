@@ -1,9 +1,3 @@
-############################################
-# Global Variables & Data Sources
-############################################
-
-data "aws_region" "current" {}
-
 locals {
   base_name = var.suffix != "" ? "${var.name}-${var.suffix}" : var.name
 }
@@ -69,13 +63,13 @@ resource "aws_lb_target_group" "http" {
   count = var.enable_https ? 0 : 1
 
   name        = "${local.base_name}-http"
-  port        = var.target_http_port
-  protocol    = "HTTP"
+  port        = var.target_type == "lambda" ? null : var.target_http_port
+  protocol    = var.target_type == "lambda" ? "HTTP" : "HTTP"
   target_type = var.target_type
-  vpc_id      = var.vpc_id
+  vpc_id      = var.target_type == "lambda" ? null : var.vpc_id
 
   dynamic "health_check" {
-    for_each = var.health_check_enabled ? [1] : []
+    for_each = var.target_type == "lambda" ? [] : (var.health_check_enabled ? [1] : [])
     content {
       enabled             = var.health_check_enabled
       path                = var.health_check_path
@@ -96,13 +90,13 @@ resource "aws_lb_target_group" "http" {
 resource "aws_lb_target_group" "https" {
   count       = var.enable_https ? 1 : 0
   name        = "${local.base_name}-https"
-  port        = var.target_http_port
-  protocol    = "HTTPS"
+  port        = var.target_type == "lambda" ? null : var.target_http_port
+  protocol    = var.target_type == "lambda" ? "HTTP" : "HTTPS"
   target_type = var.target_type
-  vpc_id      = var.vpc_id
+  vpc_id      = var.target_type == "lambda" ? null : var.vpc_id
 
   dynamic "health_check" {
-    for_each = var.health_check_enabled ? [1] : []
+    for_each = var.target_type == "lambda" ? [] : (var.health_check_enabled ? [1] : [])
     content {
       enabled             = var.health_check_enabled
       path                = var.health_check_path
@@ -182,7 +176,7 @@ resource "aws_lb_listener" "https" {
 ############################################
 
 resource "aws_lb_target_group_attachment" "generic" {
-  count = length(var.targets)
+  count = var.target_type == "lambda" ? 0 : length(var.targets)
 
   target_group_arn = var.enable_https ? aws_lb_target_group.https[0].arn : aws_lb_target_group.http[0].arn
   target_id        = var.targets[count.index]
@@ -192,4 +186,12 @@ resource "aws_lb_target_group_attachment" "generic" {
 
   # Ensure availability zone is applied only for IP targets outside VPC
   availability_zone = var.enable_availability_zone_all ? "all" : null
+}
+
+# Lambda target group attachment (only for Lambda targets)
+resource "aws_lb_target_group_attachment" "lambda" {
+  count = var.target_type == "lambda" ? length(var.targets) : 0
+
+  target_group_arn = var.enable_https ? aws_lb_target_group.https[0].arn : aws_lb_target_group.http[0].arn
+  target_id        = var.targets[count.index]
 }

@@ -76,3 +76,9 @@ output "attached_targets" {
   description = "List of targets successfully attached to the target group"
   value       = try(aws_lb_target_group_attachment.generic[*].target_id, [])
 }
+
+# Target Group ARN (Generic)
+output "target_group_arn" {
+  description = "The ARN of the target group (HTTP or HTTPS based on configuration)"
+  value       = var.enable_https ? aws_lb_target_group.https[0].arn : aws_lb_target_group.http[0].arn
+}
