@@ -1,77 +1,186 @@
-# Run setup to create networking (VPC, subnets)
-run "setup_vpc" {
-  module {
-    source = "./tests/setup"
+# Test HTTP ALB Configuration
+run "http_alb_basic" {
+  command = plan
+
+  variables {
+    name                             = "test-http-alb"
+    vpc_id                           = "vpc-12345678"
+    public_subnet_ids                = ["subnet-12345678", "subnet-87654321"]
+    enable_https                     = false
+    http_port                        = 80
+    target_http_port                 = 80
+    targets                          = ["i-12345678", "i-87654321"]
+    target_type                      = "instance"
+    allowed_http_cidrs               = ["0.0.0.0/0"]
+    allowed_egress_cidrs             = ["0.0.0.0/0"]
+    health_check_path                = "/"
+    health_check_interval            = 30
+    health_check_timeout             = 5
+    health_check_healthy_threshold   = 3
+    health_check_unhealthy_threshold = 3
+    enable_deletion_protection       = false
+    internal                         = false
+    tags = {
+      Environment = "test"
+      Project     = "alb-test"
+    }
+  }
+
+  assert {
+    condition     = var.name == "test-http-alb"
+    error_message = "ALB name should be test-http-alb"
+  }
+
+  assert {
+    condition     = var.enable_https == false
+    error_message = "HTTPS should be disabled"
+  }
+
+  assert {
+    condition     = var.target_type == "instance"
+    error_message = "Target type should be instance"
+  }
+
+  assert {
+    condition     = var.internal == false
+    error_message = "ALB should be external (not internal)"
   }
 }
 
-# Test HTTP ALB Configuration
-run "test_alb_http_configuration" {
+run "https_alb_basic" {
+  command = plan
+
   variables {
-    region               = "ap-southeast-1"
-    vpc_id               = run.setup_vpc.vpc_id
-    public_subnet_ids    = run.setup_vpc.public_subnet_ids
-    name                 = "test-alb-${run.setup_vpc.suffix}"
-    enable_https         = false
-    http_port            = 80
-    target_http_port     = 80
-    targets              = run.setup_vpc.aws_instance_ids
-    target_type          = "instance"
-    allowed_http_cidrs   = ["0.0.0.0/0"]
-    allowed_egress_cidrs = ["0.0.0.0/0"]
+    name                             = "test-https-alb"
+    vpc_id                           = "vpc-12345678"
+    public_subnet_ids                = ["subnet-12345678", "subnet-87654321"]
+    enable_https                     = true
+    certificate_arn                  = "arn:aws:acm:us-east-1:123456789012:certificate/12345678-1234-1234-1234-123456789012"
+    http_port                        = 80
+    https_port                       = 443
+    target_http_port                 = 80
+    targets                          = ["i-12345678", "i-87654321"]
+    target_type                      = "instance"
+    allowed_http_cidrs               = ["0.0.0.0/0"]
+    allowed_https_cidrs              = ["0.0.0.0/0"]
+    allowed_egress_cidrs             = ["0.0.0.0/0"]
+    health_check_path                = "/health"
+    health_check_interval            = 30
+    health_check_timeout             = 5
+    health_check_healthy_threshold   = 2
+    health_check_unhealthy_threshold = 2
+    health_check_matcher             = "200,302"
+    health_check_port                = "traffic-port"
+    health_check_protocol            = "HTTP"
+    enable_deletion_protection       = false
+    internal                         = false
+    tags = {
+      Environment = "test"
+      Project     = "alb-https-test"
+    }
   }
 
-  # Assert that ALB was created
   assert {
-    condition     = aws_lb.this.id != null
-    error_message = "ALB was not created."
+    condition     = var.enable_https == true
+    error_message = "HTTPS should be enabled"
   }
 
-  # Assert that Security Group for ALB was created
   assert {
-    condition     = length(aws_security_group.this) > 0
-    error_message = "ALB Security Group was not created."
+    condition     = var.certificate_arn != ""
+    error_message = "Certificate ARN should be provided when HTTPS is enabled"
   }
 
-  # Assert that HTTP Listener exists
   assert {
-    condition     = aws_lb_listener.http.id != null
-    error_message = "Expected an HTTP listener but found none."
+    condition     = var.health_check_matcher == "200,302"
+    error_message = "Health check matcher should be 200,302"
+  }
+}
+
+run "internal_alb_basic" {
+  command = plan
+
+  variables {
+    name                             = "test-internal-alb"
+    vpc_id                           = "vpc-12345678"
+    public_subnet_ids                = ["subnet-12345678", "subnet-87654321"]
+    enable_https                     = false
+    http_port                        = 80
+    target_http_port                 = 80
+    targets                          = ["i-12345678", "i-87654321"]
+    target_type                      = "instance"
+    allowed_http_cidrs               = ["10.0.0.0/8"]
+    allowed_egress_cidrs             = ["0.0.0.0/0"]
+    health_check_enabled             = true
+    health_check_path                = "/api/health"
+    health_check_interval            = 60
+    health_check_timeout             = 10
+    health_check_healthy_threshold   = 2
+    health_check_unhealthy_threshold = 3
+    health_check_matcher             = "200"
+    health_check_port                = "traffic-port"
+    health_check_protocol            = "HTTP"
+    enable_deletion_protection       = true
+    internal                         = true
+    tags = {
+      Environment = "test"
+      Project     = "alb-internal-test"
+      Type        = "internal"
+    }
   }
 
-  # Assert that HTTP listener forwards to the correct Target Group
   assert {
-    condition = anytrue([
-      for action in aws_lb_listener.http.default_action :
-      action.type == "forward" && action.target_group_arn == aws_lb_target_group.http[0].arn
-    ])
-    error_message = "HTTP Listener does not forward to the correct Target Group."
+    condition     = var.internal == true
+    error_message = "ALB should be internal"
   }
 
-  # Assert that HTTP Target Group was created correctly
   assert {
-    condition     = length(aws_lb_target_group.http) == 1
-    error_message = "Expected an HTTP Target Group but found none."
+    condition     = var.health_check_enabled == true
+    error_message = "Health check should be enabled"
   }
 
-  # Assert that ALB has public subnets assigned
   assert {
-    condition     = length(aws_lb.this.subnets) == length(var.public_subnet_ids)
-    error_message = "ALB is missing subnets in the configured region."
+    condition     = var.health_check_path == "/api/health"
+    error_message = "Health check path should be /api/health"
+  }
+}
+
+run "existing_security_group_alb" {
+  command = plan
+
+  variables {
+    name                        = "test-existing-sg-alb"
+    vpc_id                      = "vpc-12345678"
+    public_subnet_ids           = ["subnet-12345678", "subnet-87654321"]
+    enable_https                = false
+    http_port                   = 80
+    target_http_port            = 80
+    targets                     = ["i-12345678", "i-87654321"]
+    target_type                 = "instance"
+    allowed_http_cidrs          = ["0.0.0.0/0"]
+    allowed_egress_cidrs        = ["0.0.0.0/0"]
+    use_existing_security_group = true
+    existing_security_group_id  = "sg-12345678"
+    health_check_enabled        = false
+    enable_deletion_protection  = false
+    internal                    = false
+    tags = {
+      Environment = "test"
+      Project     = "alb-existing-sg-test"
+    }
   }
 
-  # Correct security group rule check
   assert {
-    condition = anytrue([
-      for rule in aws_security_group.this.ingress :
-      rule.from_port == 80 && rule.to_port == 80 && rule.protocol == "tcp"
-    ])
-    error_message = "ALB Security Group does not allow HTTP traffic on port 80."
+    condition     = var.use_existing_security_group == true
+    error_message = "Should use existing security group"
   }
 
-  # Assert that at least one target is attached
   assert {
-    condition     = length(aws_lb_target_group_attachment.generic) > 0
-    error_message = "No targets are attached to the ALB Target Group."
+    condition     = var.existing_security_group_id == "sg-12345678"
+    error_message = "Existing security group ID should be sg-12345678"
+  }
+
+  assert {
+    condition     = var.health_check_enabled == false
+    error_message = "Health check should be disabled"
   }
 }

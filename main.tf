@@ -14,9 +14,9 @@ locals {
 
 resource "aws_lb" "this" {
   name                       = local.base_name
-  internal                   = false
+  internal                   = var.internal
   load_balancer_type         = "application"
-  security_groups            = [aws_security_group.this.id]
+  security_groups            = var.use_existing_security_group ? [var.existing_security_group_id] : [aws_security_group.this[0].id]
   subnets                    = var.public_subnet_ids
   enable_deletion_protection = var.enable_deletion_protection
 
@@ -28,6 +28,8 @@ resource "aws_lb" "this" {
 ############################################
 
 resource "aws_security_group" "this" {
+  count = var.use_existing_security_group ? 0 : 1
+
   name_prefix = local.base_name
   vpc_id      = var.vpc_id
 
@@ -68,16 +70,23 @@ resource "aws_lb_target_group" "http" {
 
   name        = "${local.base_name}-http"
   port        = var.target_http_port
-  protocol    = "HTTP" # var.target_protocol
+  protocol    = "HTTP"
   target_type = var.target_type
   vpc_id      = var.vpc_id
 
-  health_check {
-    path                = var.health_check_path
-    interval            = var.health_check_interval
-    timeout             = var.health_check_timeout
-    healthy_threshold   = var.health_check_healthy_threshold
-    unhealthy_threshold = var.health_check_unhealthy_threshold
+  dynamic "health_check" {
+    for_each = var.health_check_enabled ? [1] : []
+    content {
+      enabled             = var.health_check_enabled
+      path                = var.health_check_path
+      interval            = var.health_check_interval
+      timeout             = var.health_check_timeout
+      healthy_threshold   = var.health_check_healthy_threshold
+      unhealthy_threshold = var.health_check_unhealthy_threshold
+      matcher             = var.health_check_matcher
+      port                = var.health_check_port
+      protocol            = var.health_check_protocol
+    }
   }
 
   tags = merge(var.tags, { Name = "${local.base_name}-http" })
@@ -87,17 +96,24 @@ resource "aws_lb_target_group" "http" {
 resource "aws_lb_target_group" "https" {
   count       = var.enable_https ? 1 : 0
   name        = "${local.base_name}-https"
-  port        = var.target_https_port
-  protocol    = "HTTPS" # var.target_protocol
+  port        = var.target_http_port
+  protocol    = "HTTPS"
   target_type = var.target_type
   vpc_id      = var.vpc_id
 
-  health_check {
-    path                = var.health_check_path
-    interval            = var.health_check_interval
-    timeout             = var.health_check_timeout
-    healthy_threshold   = var.health_check_healthy_threshold
-    unhealthy_threshold = var.health_check_unhealthy_threshold
+  dynamic "health_check" {
+    for_each = var.health_check_enabled ? [1] : []
+    content {
+      enabled             = var.health_check_enabled
+      path                = var.health_check_path
+      interval            = var.health_check_interval
+      timeout             = var.health_check_timeout
+      healthy_threshold   = var.health_check_healthy_threshold
+      unhealthy_threshold = var.health_check_unhealthy_threshold
+      matcher             = var.health_check_matcher
+      port                = var.health_check_port
+      protocol            = var.health_check_protocol
+    }
   }
 
   tags = merge(var.tags, { Name = "${local.base_name}-https" })
@@ -166,10 +182,10 @@ resource "aws_lb_listener" "https" {
 ############################################
 
 resource "aws_lb_target_group_attachment" "generic" {
-  for_each = toset(var.targets)
+  count = length(var.targets)
 
   target_group_arn = var.enable_https ? aws_lb_target_group.https[0].arn : aws_lb_target_group.http[0].arn
-  target_id        = each.value
+  target_id        = var.targets[count.index]
 
   # Ensure port is only applied for instance and IP targets
   port = contains(["instance", "ip"], var.target_type) ? var.target_http_port : null

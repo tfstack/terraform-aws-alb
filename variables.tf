@@ -26,6 +26,13 @@ variable "tags" {
   default     = {}
 }
 
+# Internal Load Balancer Support
+variable "internal" {
+  description = "If true, the ALB will be internal (not internet-facing)"
+  type        = bool
+  default     = false
+}
+
 # Networking
 variable "vpc_id" {
   description = "The VPC ID where the ALB will be deployed"
@@ -62,13 +69,15 @@ variable "target_http_port" {
   default     = 80
 }
 
-variable "target_https_port" {
-  description = "The port the ALB forwards HTTPS traffic to (Target Group)"
-  type        = number
-  default     = 443
+
+
+# Enhanced Health Check Configuration
+variable "health_check_enabled" {
+  description = "Whether to enable health checks"
+  type        = bool
+  default     = true
 }
 
-# Health Check Settings
 variable "health_check_path" {
   description = "The health check endpoint for ALB target group"
   type        = string
@@ -97,6 +106,28 @@ variable "health_check_unhealthy_threshold" {
   description = "Number of failed health checks before considering the target unhealthy"
   type        = number
   default     = 3
+}
+
+variable "health_check_matcher" {
+  description = "HTTP codes to use when checking for a successful response from a target"
+  type        = string
+  default     = "200"
+}
+
+variable "health_check_port" {
+  description = "Port to use to connect with the target"
+  type        = string
+  default     = "traffic-port"
+}
+
+variable "health_check_protocol" {
+  description = "Protocol to use to connect with the target"
+  type        = string
+  default     = "HTTP"
+  validation {
+    condition     = contains(["HTTP", "HTTPS", "TCP"], var.health_check_protocol)
+    error_message = "Health check protocol must be one of: HTTP, HTTPS, TCP."
+  }
 }
 
 # Security & Access Control
@@ -138,6 +169,24 @@ variable "certificate_arn" {
   validation {
     condition     = var.enable_https == false || (var.enable_https == true && var.certificate_arn != "")
     error_message = "You must provide a valid 'certificate_arn' when 'enable_https' is enabled."
+  }
+}
+
+# Existing Security Group Support
+variable "use_existing_security_group" {
+  description = "If true, use an existing security group instead of creating a new one"
+  type        = bool
+  default     = false
+}
+
+variable "existing_security_group_id" {
+  description = "ID of existing security group to use (required if use_existing_security_group is true)"
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.use_existing_security_group == false || (var.use_existing_security_group == true && var.existing_security_group_id != "")
+    error_message = "You must provide a valid 'existing_security_group_id' when 'use_existing_security_group' is enabled."
   }
 }
 
