@@ -7,3 +7,4 @@ packages:
 runcmd:
   - systemctl enable --now httpd
   - echo "<h1>Welcome to Web Server $(hostname)</h1>" > /var/www/html/index.html
+  - echo "healthy" > /var/www/html/health

@@ -2,21 +2,13 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "5.84.0"
+      version = ">= 5.0"
     }
   }
 }
 
 provider "aws" {
-  region = "ap-southeast-1"
-}
-
-# Fetch AWS Region & Availability Zones
-data "aws_region" "current" {}
-data "aws_availability_zones" "available" {}
-
-data "http" "my_public_ip" {
-  url = "http://ifconfig.me/ip"
+  region = "ap-southeast-2"
 }
 
 # Generate Random Suffix
@@ -27,7 +19,7 @@ resource "random_string" "suffix" {
 }
 
 locals {
-  azs                  = slice(data.aws_availability_zones.available.names, 0, 3)
+  azs                  = ["ap-southeast-2a", "ap-southeast-2b", "ap-southeast-2c"]
   enable_dns_hostnames = true
   enable_https         = false
   name                 = "albtest"
@@ -35,7 +27,7 @@ locals {
   suffix               = random_string.suffix.result
   private_subnets      = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
   public_subnets       = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
-  region               = data.aws_region.current.name
+  region               = "ap-southeast-2"
   vpc_cidr             = "10.0.0.0/16"
   tags = {
     Environment = "dev"
@@ -48,24 +40,19 @@ locals {
 ############################################
 
 module "aws_vpc" {
-  source = "tfstack/vpc/aws"
+  source = "cloudbuildlab/vpc/aws"
 
-  region             = local.region
   vpc_name           = local.base_name
   vpc_cidr           = local.vpc_cidr
   availability_zones = local.azs
 
-  public_subnets  = local.public_subnets
-  private_subnets = local.private_subnets
+  public_subnet_cidrs  = local.public_subnets
+  private_subnet_cidrs = local.private_subnets
 
   # Enable Internet Gateway & NAT Gateway
   # A single NAT gateway is used instead of multiple for cost efficiency.
-  create_igw = true
-  ngw_type   = "single"
-
-  # eic_subnet               = "private"
-  jumphost_ingress_cidrs   = ["${data.http.my_public_ip.response_body}/32"]
-  jumphost_instance_create = false
+  create_igw       = true
+  nat_gateway_type = "single"
 
   tags = local.tags
 }
@@ -139,9 +126,26 @@ module "aws_alb" {
 
   name              = local.name
   suffix            = local.suffix
-  region            = "ap-southeast-1"
   vpc_id            = module.aws_vpc.vpc_id
   public_subnet_ids = module.aws_vpc.public_subnet_ids
+
+  # Enhanced Configuration
+  internal = false # Set to true for internal load balancer
+
+  # Enhanced Health Check Configuration
+  health_check_enabled             = true
+  health_check_path                = "/health"
+  health_check_interval            = 30
+  health_check_timeout             = 5
+  health_check_healthy_threshold   = 2
+  health_check_unhealthy_threshold = 2
+  health_check_matcher             = "200,302"
+  health_check_port                = "traffic-port"
+  health_check_protocol            = "HTTP"
+
+  # Existing Security Group Support (not used in this example)
+  use_existing_security_group = false
+  existing_security_group_id  = ""
 
   enable_https        = local.enable_https
   http_port           = 80

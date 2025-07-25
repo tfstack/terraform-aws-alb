@@ -6,24 +6,13 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "5.84.0"
+      version = ">= 5.0"
     }
   }
 }
 
 provider "aws" {
-  region = "ap-southeast-1"
-}
-
-############################################
-# Data Sources
-############################################
-
-data "aws_region" "current" {}
-data "aws_availability_zones" "available" {}
-
-data "http" "my_public_ip" {
-  url = "http://ifconfig.me/ip"
+  region = "ap-southeast-2"
 }
 
 ############################################
@@ -41,9 +30,17 @@ resource "random_string" "suffix" {
 ############################################
 
 locals {
-  name      = "cltest"
-  base_name = "${local.name}-${random_string.suffix.result}"
+  azs                  = ["ap-southeast-2a", "ap-southeast-2b", "ap-southeast-2c"]
+  enable_dns_hostnames = true
+  enable_https         = false
 
+  name            = "albtest"
+  base_name       = local.suffix != "" ? "${local.name}-${local.suffix}" : local.name
+  suffix          = random_string.suffix.result
+  private_subnets = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
+  public_subnets  = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+  region          = "ap-southeast-2"
+  vpc_cidr        = "10.0.0.0/16"
   tags = {
     Environment = "dev"
     Project     = "example"
@@ -55,30 +52,26 @@ locals {
 ############################################
 
 module "vpc" {
-  source = "tfstack/vpc/aws"
+  source = "cloudbuildlab/vpc/aws"
 
   vpc_name           = local.base_name
-  vpc_cidr           = "10.0.0.0/16"
-  availability_zones = slice(data.aws_availability_zones.available.names, 0, 3)
+  vpc_cidr           = local.vpc_cidr
+  availability_zones = local.azs
 
-  public_subnets  = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
-  private_subnets = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
+  public_subnet_cidrs  = local.public_subnets
+  private_subnet_cidrs = local.private_subnets
 
-  eic_subnet        = "none"
-  eic_ingress_cidrs = ["${data.http.my_public_ip.response_body}/32"]
-
-  jumphost_instance_create     = false
-  jumphost_subnet              = "10.0.0.0/24"
-  jumphost_log_prevent_destroy = false
-  create_igw                   = true
-  ngw_type                     = "single"
+  # Enable Internet Gateway & NAT Gateway
+  # A single NAT gateway is used instead of multiple for cost efficiency.
+  create_igw       = true
+  nat_gateway_type = "single"
 
   tags = local.tags
 }
 
-############################################
+#############################################
 # AWS ALB Module
-############################################
+#############################################
 
 module "aws_alb" {
   source = "../.."

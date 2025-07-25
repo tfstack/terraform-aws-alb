@@ -23,7 +23,6 @@ resource "random_string" "suffix" {
 module "aws_vpc" {
   source = "tfstack/vpc/aws"
 
-  region             = "ap-southeast-1"
   vpc_name           = "test-alb-${random_string.suffix.result}"
   vpc_cidr           = "10.0.0.0/16"
   availability_zones = slice(data.aws_availability_zones.available.names, 0, 3)
