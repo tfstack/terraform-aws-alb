@@ -185,11 +185,6 @@ variable "targets" {
   description = "List of targets (EC2 instance IDs, IPs, Lambda ARNs, or ALB ARNs)"
   type        = list(string)
   default     = []
-
-  validation {
-    condition     = var.target_type == "ip" || length(var.targets) > 0
-    error_message = "At least one target must be specified unless target_type is 'ip'."
-  }
 }
 
 variable "target_type" {
