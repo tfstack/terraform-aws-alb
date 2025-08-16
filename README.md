@@ -57,8 +57,8 @@ No modules.
 | <a name="input_https_port"></a> [https\_port](#input\_https\_port) | The HTTPS port for ALB security group | `number` | `443` | no |
 | <a name="input_internal"></a> [internal](#input\_internal) | If true, the ALB will be internal (not internet-facing) | `bool` | `false` | no |
 | <a name="input_name"></a> [name](#input\_name) | Base name for the ALB and related resources | `string` | n/a | yes |
-| <a name="input_public_subnet_cidrs"></a> [public\_subnet\_cidrs](#input\_public\_subnet\_cidrs) | List of public subnet CIDRs to validate IP targets | `list(string)` | `[]` | no |
-| <a name="input_public_subnet_ids"></a> [public\_subnet\_ids](#input\_public\_subnet\_ids) | List of public subnet IDs where the ALB will be deployed | `list(string)` | n/a | yes |
+| <a name="input_private_subnet_ids"></a> [private\_subnet\_ids](#input\_private\_subnet\_ids) | List of private subnet IDs for internal ALB (when internal = true) | `list(string)` | `[]` | no |
+| <a name="input_public_subnet_ids"></a> [public\_subnet\_ids](#input\_public\_subnet\_ids) | List of public subnet IDs for external ALB (when internal = false) | `list(string)` | `[]` | no |
 | <a name="input_suffix"></a> [suffix](#input\_suffix) | Optional suffix to append to the resource name | `string` | `""` | no |
 | <a name="input_tags"></a> [tags](#input\_tags) | Tags to apply to resources | `map(string)` | `{}` | no |
 | <a name="input_target_http_port"></a> [target\_http\_port](#input\_target\_http\_port) | The port the ALB forwards HTTP traffic to (Target Group) | `number` | `80` | no |
