@@ -22,7 +22,7 @@ locals {
   azs                  = ["ap-southeast-2a", "ap-southeast-2b", "ap-southeast-2c"]
   enable_dns_hostnames = true
   enable_https         = false
-  name                 = "albtest"
+  name                 = "int-alb"
   base_name            = local.suffix != "" ? "${local.name}-${local.suffix}" : local.name
   suffix               = random_string.suffix.result
   private_subnets      = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
@@ -31,7 +31,7 @@ locals {
   vpc_cidr             = "10.0.0.0/16"
   tags = {
     Environment = "dev"
-    Project     = "example"
+    Project     = "internal-alb-example"
   }
 }
 
@@ -50,7 +50,6 @@ module "aws_vpc" {
   private_subnet_cidrs = local.private_subnets
 
   # Enable Internet Gateway & NAT Gateway
-  # A single NAT gateway is used instead of multiple for cost efficiency.
   create_igw       = true
   nat_gateway_type = "single"
 
@@ -108,7 +107,6 @@ resource "aws_instance" "web" {
   subnet_id     = module.aws_vpc.private_subnet_ids[count.index]
 
   vpc_security_group_ids = [
-    # module.aws_vpc.eic_security_group_id,
     aws_security_group.web.id
   ]
 
@@ -118,19 +116,19 @@ resource "aws_instance" "web" {
 }
 
 ############################################
-# AWS ALB Module
+# AWS ALB Module (Internal)
 ############################################
 
 module "aws_alb" {
   source = "../.."
 
-  name              = local.name
-  suffix            = local.suffix
-  vpc_id            = module.aws_vpc.vpc_id
-  public_subnet_ids = module.aws_vpc.public_subnet_ids
+  name               = local.name
+  suffix             = local.suffix
+  vpc_id             = module.aws_vpc.vpc_id
+  private_subnet_ids = module.aws_vpc.private_subnet_ids
 
-  # Enhanced Configuration
-  internal = false # Set to true for internal load balancer
+  # Internal ALB Configuration
+  internal = true
 
   # Enhanced Health Check Configuration
   health_check_enabled             = true
@@ -143,19 +141,37 @@ module "aws_alb" {
   health_check_port                = "traffic-port"
   health_check_protocol            = "HTTP"
 
-  # Existing Security Group Support (not used in this example)
+  # Security Group Configuration
   use_existing_security_group = false
   existing_security_group_id  = ""
 
+  # Listener Configuration
   enable_https     = local.enable_https
   http_port        = 80
   target_http_port = 80
   targets          = aws_instance.web[*].id
   target_type      = "instance"
+
+  # Security - Restrict access to VPC only
+  allowed_http_cidrs   = local.private_subnets
+  allowed_https_cidrs  = local.private_subnets
+  allowed_egress_cidrs = ["0.0.0.0/0"]
+
+  tags = local.tags
 }
 
 # Outputs
 output "all_module_outputs" {
-  description = "All outputs from the ALB module"
+  description = "All outputs from the internal ALB module"
   value       = module.aws_alb
+}
+
+output "internal_alb_dns" {
+  description = "DNS name of the internal ALB"
+  value       = module.aws_alb.alb_dns
+}
+
+output "note" {
+  description = "Important note about internal ALB"
+  value       = "This ALB is internal and only accessible from within the VPC. It cannot be reached from the internet."
 }

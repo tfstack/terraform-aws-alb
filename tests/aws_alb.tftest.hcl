@@ -102,7 +102,7 @@ run "internal_alb_basic" {
   variables {
     name                             = "test-internal-alb"
     vpc_id                           = "vpc-12345678"
-    public_subnet_ids                = ["subnet-12345678", "subnet-87654321"]
+    private_subnet_ids               = ["subnet-12345678", "subnet-87654321"]
     enable_https                     = false
     http_port                        = 80
     target_http_port                 = 80
@@ -143,6 +143,104 @@ run "internal_alb_basic" {
     error_message = "Health check path should be /api/health"
   }
 }
+
+run "internal_alb_with_private_subnets" {
+  command = plan
+
+  variables {
+    name                             = "test-internal-alb-private"
+    vpc_id                           = "vpc-12345678"
+    private_subnet_ids               = ["subnet-12345678", "subnet-87654321"]
+    enable_https                     = false
+    http_port                        = 80
+    target_http_port                 = 80
+    targets                          = ["i-12345678", "i-87654321"]
+    target_type                      = "instance"
+    allowed_http_cidrs               = ["10.0.0.0/8"]
+    allowed_egress_cidrs             = ["0.0.0.0/0"]
+    health_check_enabled             = true
+    health_check_path                = "/health"
+    health_check_interval            = 30
+    health_check_timeout             = 5
+    health_check_healthy_threshold   = 2
+    health_check_unhealthy_threshold = 3
+    health_check_matcher             = "200"
+    health_check_port                = "traffic-port"
+    health_check_protocol            = "HTTP"
+    enable_deletion_protection       = false
+    internal                         = true
+    tags = {
+      Environment = "test"
+      Project     = "alb-internal-private-test"
+      Type        = "internal-private"
+    }
+  }
+
+  assert {
+    condition     = var.internal == true
+    error_message = "ALB should be internal"
+  }
+
+  assert {
+    condition     = length(var.private_subnet_ids) == 2
+    error_message = "Should have 2 private subnet IDs"
+  }
+
+  assert {
+    condition     = var.health_check_path == "/health"
+    error_message = "Health check path should be /health"
+  }
+}
+
+run "external_alb_with_public_subnets" {
+  command = plan
+
+  variables {
+    name                             = "test-external-alb-public"
+    vpc_id                           = "vpc-12345678"
+    public_subnet_ids                = ["subnet-12345678", "subnet-87654321"]
+    enable_https                     = false
+    http_port                        = 80
+    target_http_port                 = 80
+    targets                          = ["i-12345678", "i-87654321"]
+    target_type                      = "instance"
+    allowed_http_cidrs               = ["0.0.0.0/0"]
+    allowed_egress_cidrs             = ["0.0.0.0/0"]
+    health_check_enabled             = true
+    health_check_path                = "/"
+    health_check_interval            = 30
+    health_check_timeout             = 5
+    health_check_healthy_threshold   = 3
+    health_check_unhealthy_threshold = 3
+    health_check_matcher             = "200"
+    health_check_port                = "traffic-port"
+    health_check_protocol            = "HTTP"
+    enable_deletion_protection       = false
+    internal                         = false
+    tags = {
+      Environment = "test"
+      Project     = "alb-external-public-test"
+      Type        = "external-public"
+    }
+  }
+
+  assert {
+    condition     = var.internal == false
+    error_message = "ALB should be external"
+  }
+
+  assert {
+    condition     = length(var.public_subnet_ids) == 2
+    error_message = "Should have 2 public subnet IDs"
+  }
+
+  assert {
+    condition     = var.health_check_path == "/"
+    error_message = "Health check path should be /"
+  }
+}
+
+
 
 run "existing_security_group_alb" {
   command = plan
