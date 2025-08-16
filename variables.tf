@@ -30,14 +30,25 @@ variable "vpc_id" {
 }
 
 variable "public_subnet_ids" {
-  description = "List of public subnet IDs where the ALB will be deployed"
-  type        = list(string)
-}
-
-variable "public_subnet_cidrs" {
-  description = "List of public subnet CIDRs to validate IP targets"
+  description = "List of public subnet IDs for external ALB (when internal = false)"
   type        = list(string)
   default     = []
+
+  validation {
+    condition     = var.internal == true || (var.internal == false && length(var.public_subnet_ids) > 0)
+    error_message = "public_subnet_ids must be provided when internal is false."
+  }
+}
+
+variable "private_subnet_ids" {
+  description = "List of private subnet IDs for internal ALB (when internal = true)"
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = var.internal == false || (var.internal == true && length(var.private_subnet_ids) > 0)
+    error_message = "private_subnet_ids must be provided when internal is true."
+  }
 }
 
 # ALB Listener & Ports

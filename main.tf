@@ -11,7 +11,7 @@ resource "aws_lb" "this" {
   internal                   = var.internal
   load_balancer_type         = "application"
   security_groups            = var.use_existing_security_group ? [var.existing_security_group_id] : [aws_security_group.this[0].id]
-  subnets                    = var.public_subnet_ids
+  subnets                    = var.internal ? var.private_subnet_ids : var.public_subnet_ids
   enable_deletion_protection = var.enable_deletion_protection
 
   tags = merge(var.tags, { Name = local.base_name })

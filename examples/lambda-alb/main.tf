@@ -150,8 +150,6 @@ module "aws_alb" {
   # Health check configuration for Lambda (disabled)
   health_check_enabled = false
 
-  public_subnet_cidrs = module.vpc.public_subnet_cidrs
-
   tags = local.tags
 
   depends_on = [aws_lambda_permission.alb]
