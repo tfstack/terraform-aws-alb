@@ -64,7 +64,7 @@ resource "aws_lb_target_group" "http" {
 
   name        = "${local.base_name}-http"
   port        = var.target_type == "lambda" ? null : var.target_http_port
-  protocol    = var.target_type == "lambda" ? "HTTP" : "HTTP"
+  protocol    = var.target_type == "lambda" ? null : "HTTP"
   target_type = var.target_type
   vpc_id      = var.target_type == "lambda" ? null : var.vpc_id
 
@@ -91,7 +91,7 @@ resource "aws_lb_target_group" "https" {
   count       = var.enable_https ? 1 : 0
   name        = "${local.base_name}-https"
   port        = var.target_type == "lambda" ? null : var.target_http_port
-  protocol    = var.target_type == "lambda" ? "HTTP" : "HTTPS"
+  protocol    = var.target_type == "lambda" ? null : "HTTPS"
   target_type = var.target_type
   vpc_id      = var.target_type == "lambda" ? null : var.vpc_id
 
