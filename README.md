@@ -13,7 +13,7 @@ Terraform module for deploying and managing an AWS Application Load Balancer (AL
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.5.0 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 5.0 |
 
 ## Modules
 
