@@ -2,6 +2,11 @@
 variable "name" {
   description = "Base name for the ALB and related resources"
   type        = string
+
+  validation {
+    condition     = var.suffix != "" ? length("${var.name}-${var.suffix}") <= 28 : length(var.name) <= 28
+    error_message = "The combined name (name + suffix) must be 28 characters or less to allow for target group suffixes (-http/-https). Current length: ${var.suffix != "" ? length("${var.name}-${var.suffix}") : length(var.name)} characters."
+  }
 }
 
 variable "suffix" {
@@ -9,6 +14,7 @@ variable "suffix" {
   type        = string
   default     = ""
 }
+
 
 variable "tags" {
   description = "Tags to apply to resources"
